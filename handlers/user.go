@@ -12,8 +12,8 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/golang-jwt/jwt"
 	"github.com/lib/pq"
-	"github.com/mydeer/mydeer/internal/db"
-	"github.com/mydeer/mydeer/middleware"
+	"github.com/my-deer/mydeer/internal/db"
+	"github.com/my-deer/mydeer/middleware"
 	"golang.org/x/crypto/bcrypt"
 	"golang.org/x/exp/slog"
 )

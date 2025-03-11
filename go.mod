@@ -1,4 +1,4 @@
-module github.com/mydeer/mydeer
+module github.com/my-deer/mydeer
 
 go 1.23.3
 

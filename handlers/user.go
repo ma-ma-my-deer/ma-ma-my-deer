@@ -13,6 +13,7 @@ import (
 	"github.com/golang-jwt/jwt"
 	"github.com/lib/pq"
 	"github.com/my-deer/mydeer/internal/db"
+	apperrors "github.com/my-deer/mydeer/internal/errors"
 	"github.com/my-deer/mydeer/middleware"
 	"golang.org/x/crypto/bcrypt"
 	"golang.org/x/exp/slog"
@@ -58,30 +59,36 @@ func getLogger(c *gin.Context) *slog.Logger {
 	return slog.New(slog.NewJSONHandler(os.Stdout, nil))
 }
 
-// LoginHandler は、受け取ったEmailとPasswordでログイン処理を行い、JWTトークンを発行後、Cookieにセットします。
-// エラーメッセージは詳細を隠蔽し、"invalid_credentials"のみ返します。
+// LoginHandler is, receive Email and Password and login, issue JWT token and set cookie.
 func LoginHandler(c *gin.Context) {
 	logger := getLogger(c)
-	queries := c.MustGet("queries").(*db.Queries)
+	mydb := c.MustGet("mydb").(*db.DB)
 
 	var input LoginInput
 	if err := c.ShouldBindJSON(&input); err != nil {
+		var validationErrors gin.H
+		if ve, ok := err.(validator.ValidationErrors); ok {
+			validationErrors = buildValidationErrorMap(ve)
+		}
 		logger.Error("login: failed to bind json", "error", err.Error())
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid_request_payload", "code": "400"})
+		// Use the errors.ErrInvalidInput error with details
+		appErr := apperrors.ErrInvalidInput.WithDetails(validationErrors)
+		c.Error(appErr) // Will be caught by the error middleware
 		return
 	}
 
-	user, err := queries.GetUserByEmail(c, input.Email)
+	user, err := mydb.GetUserByEmail(c, input.Email)
 	if err != nil {
-		logger.Warn("login: user not found", "email", input.Email)
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid_credentials", "code": "401"})
+		logger.Warn("login: user lookup failed", "email", input.Email, "error", err)
+		// Always return generic error for authentication attempts to prevent user enumeration
+		c.Error(apperrors.ErrInvalidCredentials)
 		return
 	}
 
 	// パスワード比較（passwordはログに出力しない）
 	if err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(input.Password)); err != nil {
 		logger.Warn("login: invalid credentials", "email", input.Email)
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid_credentials", "code": "401"})
+		c.Error(apperrors.ErrInvalidCredentials)
 		return
 	}
 
@@ -93,7 +100,7 @@ func LoginHandler(c *gin.Context) {
 	tokenString, err := token.SignedString([]byte(middleware.SECRET_KEY))
 	if err != nil {
 		logger.Error("login: error signing token", "email", input.Email, "error", err.Error())
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal_server_error", "code": "500"})
+		c.Error(apperrors.Wrap(err, apperrors.ErrInternal, "Failed to generate authentication token", http.StatusInternalServerError))
 		return
 	}
 
@@ -105,11 +112,34 @@ func LoginHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "login_success"})
 }
 
+// Helper function to build validation error map
+func buildValidationErrorMap(ve validator.ValidationErrors) gin.H {
+	errorDetails := gin.H{}
+	for _, fieldErr := range ve {
+		fieldName := strings.ToLower(fieldErr.Field())
+		var errorMsg string
+		switch fieldErr.Tag() {
+		case "required":
+			errorMsg = fieldName + "_required"
+		case "email":
+			errorMsg = "invalid_email_format"
+		case "min":
+			errorMsg = fieldName + "_too_short"
+		case "max":
+			errorMsg = fieldName + "_too_long"
+		default:
+			errorMsg = "invalid_" + fieldName
+		}
+		errorDetails[fieldName] = errorMsg
+	}
+	return errorDetails
+}
+
 // SignupHandler は、受け取ったEmail, Password, Nameを検証後、bcryptでハッシュ化しDBに保存します。
 // バリデーションエラー時は、どのフィールドがどの理由で不正かを明示的なエラーコードで返します。
 func SignupHandler(c *gin.Context) {
 	logger := getLogger(c)
-	queries := c.MustGet("queries").(*db.Queries)
+	mydb := c.MustGet("mydb").(*db.DB)
 
 	var input SignupInput
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -174,7 +204,7 @@ func SignupHandler(c *gin.Context) {
 	}
 
 	// ユーザー登録（DB側でUUID自動生成前提）
-	_, err = queries.CreateUser(c, db.CreateUserParams{
+	_, err = mydb.CreateUser(c, db.CreateUserParams{
 		Email:    input.Email,
 		Password: string(hashedPassword),
 		Name:     input.Name,

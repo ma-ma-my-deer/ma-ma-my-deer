@@ -21,12 +21,12 @@ func main() {
 	}
 	defer conn.Close()
 
-	queries := db.New(conn)
+	mydb := db.New(conn)
 	r := gin.Default()
 
 	// sqlcのクエリインスタンスをコンテキストにセット
 	r.Use(func(c *gin.Context) {
-		c.Set("queries", queries)
+		c.Set("mydb", mydb)
 		c.Next()
 	})
 

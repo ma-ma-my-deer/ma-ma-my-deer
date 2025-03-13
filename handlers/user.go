@@ -4,7 +4,6 @@ import (
 	"errors"
 	"net/http"
 	"os"
-	"strings"
 	"time"
 	"unicode"
 
@@ -19,23 +18,16 @@ import (
 	"golang.org/x/exp/slog"
 )
 
-// LoginInput はログイン用の入力構造体です。
-type LoginInput struct {
-	Email    string `json:"email" binding:"required,email"`
-	Password string `json:"password" binding:"required"`
+// RegisterValidators registers custom validators for the application
+func RegisterValidators(v *validator.Validate) {
+	v.RegisterValidation("complexpassword", validateComplexPassword)
 }
 
-// SignupInput はアカウント作成用の入力構造体です。
-// カスタムバリデーション("validpassword")はここでは使用せず、後でローカル検証します。
-type SignupInput struct {
-	Email    string `json:"email" binding:"required,email"`
-	Password string `json:"password" binding:"required,min=12,max=72"`
-	Name     string `json:"name" binding:"required"`
-}
-
-// validPassword はパスワードが大文字・小文字・数字・記号を各1文字以上含むかをチェックします。
-func validPassword(password string) bool {
+// validateComplexPassword checks if password has uppercase, lowercase, digit, and symbol
+func validateComplexPassword(fl validator.FieldLevel) bool {
+	password := fl.Field().String()
 	var hasUpper, hasLower, hasDigit, hasSymbol bool
+
 	for _, ch := range password {
 		switch {
 		case unicode.IsUpper(ch):
@@ -48,7 +40,22 @@ func validPassword(password string) bool {
 			hasSymbol = true
 		}
 	}
+
 	return hasUpper && hasLower && hasDigit && hasSymbol
+}
+
+// LoginInput はログイン用の入力構造体です。
+type LoginInput struct {
+	Email    string `json:"email" binding:"required,email"`
+	Password string `json:"password" binding:"required"`
+}
+
+// SignupInput はアカウント作成用の入力構造体です。
+// カスタムバリデーション("validpassword")はここでは使用せず、後でローカル検証します。
+type SignupInput struct {
+	Email    string `json:"email" binding:"required,email"`
+	Password string `json:"password" binding:"required,min=12,max=72,complexpassword"`
+	Name     string `json:"name" binding:"required"`
 }
 
 // getLogger はコンテキストからloggerを取得します。
@@ -66,14 +73,8 @@ func LoginHandler(c *gin.Context) {
 
 	var input LoginInput
 	if err := c.ShouldBindJSON(&input); err != nil {
-		var validationErrors gin.H
-		if ve, ok := err.(validator.ValidationErrors); ok {
-			validationErrors = buildValidationErrorMap(ve)
-		}
 		logger.Error("login: failed to bind json", "error", err.Error())
-		// Use the errors.ErrInvalidInput error with details
-		appErr := apperrors.ErrInvalidInput.WithDetails(validationErrors)
-		c.Error(appErr) // Will be caught by the error middleware
+		c.Error(apperrors.ErrInvalidInput)
 		return
 	}
 
@@ -112,84 +113,16 @@ func LoginHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "login_success"})
 }
 
-// Helper function to build validation error map
-func buildValidationErrorMap(ve validator.ValidationErrors) gin.H {
-	errorDetails := gin.H{}
-	for _, fieldErr := range ve {
-		fieldName := strings.ToLower(fieldErr.Field())
-		var errorMsg string
-		switch fieldErr.Tag() {
-		case "required":
-			errorMsg = fieldName + "_required"
-		case "email":
-			errorMsg = "invalid_email_format"
-		case "min":
-			errorMsg = fieldName + "_too_short"
-		case "max":
-			errorMsg = fieldName + "_too_long"
-		default:
-			errorMsg = "invalid_" + fieldName
-		}
-		errorDetails[fieldName] = errorMsg
-	}
-	return errorDetails
-}
-
 // SignupHandler は、受け取ったEmail, Password, Nameを検証後、bcryptでハッシュ化しDBに保存します。
-// バリデーションエラー時は、どのフィールドがどの理由で不正かを明示的なエラーコードで返します。
 func SignupHandler(c *gin.Context) {
 	logger := getLogger(c)
 	mydb := c.MustGet("mydb").(*db.DB)
 
 	var input SignupInput
 	if err := c.ShouldBindJSON(&input); err != nil {
-		// バリデーションエラーを詳細に返す
-		var ve validator.ValidationErrors
-		if errors.As(err, &ve) {
-			errorDetails := make(map[string]string)
-			for _, fieldErr := range ve {
-				fieldName := strings.ToLower(fieldErr.Field())
-				var errorMsg string
-				switch fieldErr.Field() {
-				case "Email":
-					if fieldErr.Tag() == "email" {
-						errorMsg = "invalid_email_format"
-					} else {
-						errorMsg = "invalid_email"
-					}
-				case "Password":
-					if fieldErr.Tag() == "min" {
-						errorMsg = "password_too_short"
-					} else if fieldErr.Tag() == "max" {
-						errorMsg = "password_too_long"
-					} else {
-						errorMsg = "invalid_password"
-					}
-				case "Name":
-					errorMsg = "invalid_name"
-				default:
-					errorMsg = "invalid_" + fieldName
-				}
-				errorDetails[fieldName] = errorMsg
-			}
-			logger.Warn("signup: validation error", "errors", errorDetails)
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error":   "validation_failed",
-				"details": errorDetails,
-				"code":    "400",
-			})
-			return
-		}
-		logger.Error("signup: failed to bind json", "error", err.Error())
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid_request_payload", "code": "400"})
-		return
-	}
-
-	// ローカルでパスワードの複雑性をチェック（大文字・小文字・数字・記号を各1文字以上含む）
-	if !validPassword(input.Password) {
-		logger.Warn("signup: password complexity insufficient", "email", input.Email)
+		logger.Warn("signup: validation error", "error", err.Error())
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "password_complexity_insufficient",
+			"error": "validation_failed",
 			"code":  "400",
 		})
 		return

@@ -26,6 +26,8 @@ var (
 	testRouter *gin.Engine
 )
 
+var dsn = fmt.Sprintf("postgres://%s:%s@localhost:%s/%s?sslmode=disable", os.Getenv("POSTGRES_USER"), os.Getenv("POSTGRES_PASSWORD"), os.Getenv("POSTGRES_PORT"), os.Getenv("POSTGRES_DB"))
+
 // setupTestServer configures a test server with the same middleware and routes as production
 func setupTestServer(t *testing.T) {
 	// Set Gin to test mode
@@ -40,10 +42,9 @@ func setupTestServer(t *testing.T) {
 	}
 
 	// Set up database connection
-	dsn := "postgres://myuser:mypassword@localhost:5432/mydb?sslmode=disable"
 	conn, err := sql.Open("postgres", dsn)
 	if err != nil {
-		t.Fatalf("Failed to connect to database: %v", err)
+		t.Fatalf("Failed to connect to test database: %v", err)
 	}
 
 	testDB = db.New(conn)

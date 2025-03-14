@@ -5,10 +5,12 @@ import (
 	"os"
 
 	"github.com/gin-gonic/gin"
+	"github.com/gin-gonic/gin/binding"
 	"github.com/my-deer/mydeer/handlers"
 	"github.com/my-deer/mydeer/internal/db"
 	"github.com/my-deer/mydeer/middleware"
 	"golang.org/x/exp/slog"
+	"github.com/go-playground/validator/v10"
 )
 
 func main() {
@@ -24,6 +26,11 @@ func main() {
 	mydb := db.New(conn)
 	r := gin.Default()
 
+	// Register custom validators
+	if v, ok := binding.Validator.Engine().(*validator.Validate); ok {
+		handlers.RegisterValidators(v)
+	}
+
 	// sqlcのクエリインスタンスをコンテキストにセット
 	r.Use(func(c *gin.Context) {
 		c.Set("mydb", mydb)
@@ -32,6 +39,7 @@ func main() {
 
 	// ミドルウェア設定
 	r.Use(middleware.RequestLogger())
+	r.Use(middleware.ErrorHandler()) // Add this line
 	r.Use(gin.Recovery())
 
 	// エンドポイント設定

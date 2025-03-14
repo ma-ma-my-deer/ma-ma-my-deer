@@ -27,3 +27,11 @@ apitest: migrate-test-up
 	env $(shell cat .env.test | xargs) go test -v ./test
 	$(MIGRATE_TEST) down
 
+test:
+	env $(shell cat .env.test | xargs) go test -v ./test
+
+docker-build:
+	docker build -t mydeer-app .
+
+all: migrate-test-up apitest build docker-build migrate-test-down
+

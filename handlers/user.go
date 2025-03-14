@@ -3,7 +3,6 @@ package handlers
 import (
 	"errors"
 	"net/http"
-	"os"
 	"time"
 	"unicode"
 
@@ -14,8 +13,8 @@ import (
 	"github.com/my-deer/mydeer/internal/db"
 	apperrors "github.com/my-deer/mydeer/internal/errors"
 	"github.com/my-deer/mydeer/middleware"
+	"github.com/my-deer/mydeer/utils"
 	"golang.org/x/crypto/bcrypt"
-	"golang.org/x/exp/slog"
 )
 
 // RegisterValidators registers custom validators for the application
@@ -58,17 +57,9 @@ type SignupInput struct {
 	Name     string `json:"name" binding:"required"`
 }
 
-// getLogger はコンテキストからloggerを取得します。
-func getLogger(c *gin.Context) *slog.Logger {
-	if logger, exists := c.Get("logger"); exists {
-		return logger.(*slog.Logger)
-	}
-	return slog.New(slog.NewJSONHandler(os.Stdout, nil))
-}
-
 // LoginHandler is, receive Email and Password and login, issue JWT token and set cookie.
 func LoginHandler(c *gin.Context) {
-	logger := getLogger(c)
+	logger := utils.GetLogger(c)
 	mydb := c.MustGet("mydb").(*db.DB)
 
 	var input LoginInput
@@ -115,7 +106,7 @@ func LoginHandler(c *gin.Context) {
 
 // SignupHandler は、受け取ったEmail, Password, Nameを検証後、bcryptでハッシュ化しDBに保存します。
 func SignupHandler(c *gin.Context) {
-	logger := getLogger(c)
+	logger := utils.GetLogger(c)
 	mydb := c.MustGet("mydb").(*db.DB)
 
 	var input SignupInput

@@ -5,14 +5,14 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/my-deer/mydeer/internal/errors"
-	"golang.org/x/exp/slog"
+	"github.com/my-deer/mydeer/utils"
 )
 
 // ErrorHandler middleware catches panics and returns JSON error responses
 func ErrorHandler() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Get the logger
-		logger := getLogger(c)
+		logger := utils.GetLogger(c)
 
 		// Recover from any panics
 		defer func() {
@@ -51,12 +51,4 @@ func ErrorHandler() gin.HandlerFunc {
 			})
 		}
 	}
-}
-
-// getLogger retrieves the logger from the context
-func getLogger(c *gin.Context) *slog.Logger {
-	if logger, exists := c.Get("logger"); exists {
-		return logger.(*slog.Logger)
-	}
-	return slog.Default()
 }

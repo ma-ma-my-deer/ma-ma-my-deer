@@ -1,0 +1,17 @@
+"filename", "language", "Go Checksum File", "Go", "Go Module File", "comment", "blank", "total"
+"/home/ryo0/mydeer/go.mod", "Go Module File", 0, 0, 60, 0, 5, 65
+"/home/ryo0/mydeer/go.sum", "Go Checksum File", 156, 0, 0, 0, 1, 157
+"/home/ryo0/mydeer/handlers/user.go", "Go", 0, 134, 0, 0, 21, 155
+"/home/ryo0/mydeer/internal/db/db.go", "Go", 0, 28, 0, 0, 8, 36
+"/home/ryo0/mydeer/internal/db/models.go", "Go", 0, 16, 0, 0, 5, 21
+"/home/ryo0/mydeer/internal/db/user.go", "Go", 0, 66, 0, 0, 13, 79
+"/home/ryo0/mydeer/internal/errors/db_errors.go", "Go", 0, 49, 0, 0, 10, 59
+"/home/ryo0/mydeer/internal/errors/errors.go", "Go", 0, 116, 0, 0, 21, 137
+"/home/ryo0/mydeer/main.go", "Go", 0, 43, 0, 0, 10, 53
+"/home/ryo0/mydeer/middleware/auth.go", "Go", 0, 47, 0, 0, 9, 56
+"/home/ryo0/mydeer/middleware/error_handler.go", "Go", 0, 46, 0, 0, 9, 55
+"/home/ryo0/mydeer/middleware/logger.go", "Go", 0, 20, 0, 0, 4, 24
+"/home/ryo0/mydeer/test/api_test.go", "Go", 0, 248, 0, 0, 42, 290
+"/home/ryo0/mydeer/types/user.go", "Go", 0, 6, 0, 0, 2, 8
+"/home/ryo0/mydeer/utils/logger.go", "Go", 0, 14, 0, 0, 4, 18
+"Total", "-", 156, 833, 60, 0, 164, 1213

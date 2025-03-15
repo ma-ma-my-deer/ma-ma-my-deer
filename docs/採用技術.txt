@@ -1,0 +1,18 @@
+# クラウド
+GCPのCloudRunを使ってみる
+Firebaseが便利そうだからFirebaseにして、ついでなのでGoogleで統一というだけの理由
+
+# DB
+FirebaseのFirestoreとRealtime DatabaseとRDBを使う予定
+
+# 認証
+Firebase Authenticationで、SSOでログインする
+
+# バックエンド
+Goのgin
+SSE, WebSocketを使う関係上完全なサーバーレスは不可能と判断
+ORMはBun
+
+# フロントエンド
+一旦Reactでやるが、SSRの必要性を感じた場合はRemixを使ってみる
+スマホ対応は必須だが一旦PWAでいけるところまでやる
